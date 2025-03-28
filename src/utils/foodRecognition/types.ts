@@ -1,17 +1,14 @@
-
-import * as tf from '@tensorflow/tfjs';
+// This file contains the types and interfaces used in the food recognition module.
+export interface FoodItem {
+  name: string;
+  quantity?: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
 
 export interface FoodDetectionResult {
-  name: string;
-  confidence: number;
+  foods: FoodItem[];
+  primaryFood: FoodItem;
 }
-
-export interface ModelState {
-  model: tf.GraphModel | null;
-  isInitialized: boolean;
-}
-
-export const FOOD_CLASSES = [
-  'apple', 'banana', 'broccoli', 'carrot', 'chicken', 
-  'rice', 'pasta', 'salmon', 'avocado', 'eggs'
-];

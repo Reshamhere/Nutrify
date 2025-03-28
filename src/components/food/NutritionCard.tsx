@@ -1,151 +1,73 @@
-
 import { useState } from 'react';
-import { CircleCheck, Info, PlusCircle, Utensils } from 'lucide-react';
-import { toast } from 'sonner';
-import { getNutrientData } from '../../utils/nutrientData';
 
-interface FoodData {
+interface FoodItem {
   name: string;
-  confidence: number;
+  quantity?: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
 }
 
 interface NutritionCardProps {
-  foodData: FoodData;
+  foodData: FoodItem[];
+  primaryFood: FoodItem;
 }
 
-const NutritionCard = ({ foodData }: NutritionCardProps) => {
-  const [adding, setAdding] = useState(false);
-  
-  // Get nutrition data for the detected food
-  const nutrientData = getNutrientData(foodData.name);
-  
-  const handleAddToInventory = () => {
-    setAdding(true);
-    
-    // Simulate adding to inventory
-    setTimeout(() => {
-      // Add to local storage
-      const inventory = JSON.parse(localStorage.getItem('foodInventory') || '[]');
-      
-      // Check if food already exists
-      const exists = inventory.some((item: {name: string}) => item.name === foodData.name);
-      
-      if (!exists) {
-        inventory.push({
-          id: Date.now(),
-          name: foodData.name,
-          dateAdded: new Date().toISOString(),
-          nutrients: nutrientData
-        });
-        
-        localStorage.setItem('foodInventory', JSON.stringify(inventory));
-        toast.success(`${foodData.name} added to inventory`);
-      } else {
-        toast.info(`${foodData.name} is already in your inventory`);
-      }
-      
-      setAdding(false);
-    }, 800);
-  };
-  
+const NutritionCard = ({ foodData, primaryFood }: NutritionCardProps) => {
+  const [selectedFood, setSelectedFood] = useState(primaryFood);
+
   return (
-    <div className="bg-card rounded-lg border border-border/60 shadow-subtle overflow-hidden h-full">
+    <div className="bg-card rounded-lg border border-border/60 shadow-subtle overflow-hidden">
       <div className="bg-primary/5 p-4 border-b border-border/60">
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="inline-flex items-center px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-2">
-              <CircleCheck className="h-3 w-3 mr-1" />
-              {(foodData.confidence * 100).toFixed(0)}% Confidence
-            </div>
-            <h3 className="text-xl font-semibold capitalize">{foodData.name}</h3>
-          </div>
-          <button
-            onClick={handleAddToInventory}
-            disabled={adding}
-            className="inline-flex items-center px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-70"
-          >
-            {adding ? (
-              <span className="flex items-center">
-                Adding...
-              </span>
-            ) : (
-              <span className="flex items-center">
-                <PlusCircle className="h-4 w-4 mr-1.5" />
-                Add to Inventory
-              </span>
-            )}
-          </button>
-        </div>
+        <h3 className="text-xl font-semibold capitalize">{selectedFood.name}</h3>
+        {selectedFood.quantity && (
+          <p className="text-sm text-muted-foreground">Serving: {selectedFood.quantity}</p>
+        )}
       </div>
-      
+
       <div className="p-4">
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-muted-foreground mb-2">Nutrition Facts (per 100g)</h4>
-          
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm">Calories</span>
-              <span className="text-sm font-medium">{nutrientData.calories} kcal</span>
-            </div>
-            
-            <div className="flex justify-between">
-              <span className="text-sm">Protein</span>
-              <span className="text-sm font-medium">{nutrientData.protein}g</span>
-            </div>
-            
-            <div className="flex justify-between">
-              <span className="text-sm">Carbs</span>
-              <span className="text-sm font-medium">{nutrientData.carbs}g</span>
-            </div>
-            
-            <div className="flex justify-between">
-              <span className="text-sm">Fat</span>
-              <span className="text-sm font-medium">{nutrientData.fat}g</span>
-            </div>
-            
-            <div className="flex justify-between">
-              <span className="text-sm">Fiber</span>
-              <span className="text-sm font-medium">{nutrientData.fiber}g</span>
-            </div>
-            
-            <div className="flex justify-between">
-              <span className="text-sm">Sugar</span>
-              <span className="text-sm font-medium">{nutrientData.sugar}g</span>
+        {/* Food selector for multiple items */}
+        {foodData.length > 1 && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-muted-foreground mb-2">
+              Detected Foods:
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {foodData.map((food, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedFood(food)}
+                  className={`px-3 py-1 text-sm rounded-full ${
+                    selectedFood.name === food.name
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-foreground'
+                  }`}
+                >
+                  {food.name}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
-        
-        {/* Health benefits */}
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-muted-foreground flex items-center mb-2">
-            <Info className="h-3.5 w-3.5 mr-1.5" />
-            Health Benefits
-          </h4>
-          <ul className="text-sm space-y-1">
-            {nutrientData.benefits.map((benefit, index) => (
-              <li key={index} className="flex items-start">
-                <CircleCheck className="h-4 w-4 text-primary shrink-0 mr-2 mt-0.5" />
-                <span>{benefit}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        
-        {/* Dietary suitability */}
-        <div>
-          <h4 className="text-sm font-medium text-muted-foreground flex items-center mb-2">
-            <Utensils className="h-3.5 w-3.5 mr-1.5" />
-            Dietary Suitability
-          </h4>
-          <div className="flex flex-wrap gap-2">
-            {nutrientData.dietarySuitability.map((diet, index) => (
-              <span
-                key={index}
-                className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-secondary text-foreground"
-              >
-                {diet}
-              </span>
-            ))}
+        )}
+
+        {/* Nutrition facts */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-muted/10 p-3 rounded-lg">
+            <p className="text-sm text-muted-foreground">Calories</p>
+            <p className="text-lg font-medium">{selectedFood.calories} kcal</p>
+          </div>
+          <div className="bg-muted/10 p-3 rounded-lg">
+            <p className="text-sm text-muted-foreground">Protein</p>
+            <p className="text-lg font-medium">{selectedFood.protein}g</p>
+          </div>
+          <div className="bg-muted/10 p-3 rounded-lg">
+            <p className="text-sm text-muted-foreground">Carbs</p>
+            <p className="text-lg font-medium">{selectedFood.carbs}g</p>
+          </div>
+          <div className="bg-muted/10 p-3 rounded-lg">
+            <p className="text-sm text-muted-foreground">Fat</p>
+            <p className="text-lg font-medium">{selectedFood.fat}g</p>
           </div>
         </div>
       </div>

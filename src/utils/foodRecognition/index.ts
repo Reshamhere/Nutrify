@@ -1,52 +1,63 @@
+import { FoodItem, FoodDetectionResult } from './types';
+import { analyzeFoodImageWithNutrition } from '../../services/visionService';
+import { fallbackClassify } from './predictionMapper';
 
-import * as tf from '@tensorflow/tfjs';
-import { FoodDetectionResult } from './types';
-import { initModel, getModelState } from './modelLoader';
-import { preprocessImage, findTopKIndices } from './imagePreprocessing';
-import { mapToFoodClass, fallbackClassify } from './predictionMapper';
+const AZURE_VISION_API_KEY = import.meta.env.VITE_AZURE_VISION_API_KEY;
 
-// Re-export the initialization function
-export { initModel } from './modelLoader';
-
-/**
- * Classify an image using the loaded model
- */
-export const classifyImage = async (canvas: HTMLCanvasElement): Promise<FoodDetectionResult | null> => {
-  const { model, isInitialized } = getModelState();
-  
-  if (!isInitialized) {
-    throw new Error('Model not initialized. Call initModel() first.');
-  }
-  
+export const classifyImage = async (canvas: HTMLCanvasElement): Promise<FoodDetectionResult> => {
   try {
-    if (model) {
-      // Preprocess the image
-      const tensor = preprocessImage(canvas);
-      
-      // Run prediction
-      const predictions = await model.predict(tensor) as tf.Tensor;
-      
-      // Get results
-      const data = await predictions.data();
-      
-      // Cleanup tensors
-      tensor.dispose();
-      predictions.dispose();
-      
-      // Get top 5 predictions
-      const topIndices = findTopKIndices(Array.from(data), 5);
-      
-      // Map the prediction to our food classes (with some heuristics)
-      const result = mapToFoodClass(topIndices, Array.from(data), canvas);
-      
-      return result;
-    } else {
-      // Fallback to advanced color analysis if model loading failed
-      return fallbackClassify(canvas);
+    // Convert canvas to base64 with compression
+    const base64 = await new Promise<string>((resolve) => {
+      canvas.toBlob(
+        (blob) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob!);
+        },
+        'image/jpeg',
+        0.8 // 80% quality for smaller file size
+      );
+    });
+
+    // Use GPT-4 Vision API with retry logic
+    let retries = 2;
+    while (retries > 0) {
+      try {
+        const result = await analyzeFoodImageWithNutrition(base64, AZURE_VISION_API_KEY);
+        return result;
+      } catch (error) {
+        if (retries === 1) throw error; // Only throw on last retry
+        retries--;
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+      }
     }
+
+    throw new Error('Max retries exceeded');
   } catch (error) {
-    console.error('Error during classification:', error);
-    // Fallback to color-based classification
-    return fallbackClassify(canvas);
+    console.error('Vision API failed, using fallback:', error);
+    // Fallback to color analysis with adjusted return type
+    const fallbackResult = fallbackClassify(canvas);
+    return {
+      foods: [{
+        name: fallbackResult.name,
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0
+      }],
+      primaryFood: {
+        name: fallbackResult.name,
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0
+      }
+    };
   }
+};
+
+// Empty initialization function (kept for backward compatibility)
+export const initModel = async (): Promise<void> => {
+  console.log('Using GPT-4 Vision API - no model initialization required');
+  return Promise.resolve();
 };

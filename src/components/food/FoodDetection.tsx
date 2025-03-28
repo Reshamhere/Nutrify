@@ -1,52 +1,33 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload, Camera, RefreshCw, ImageIcon } from 'lucide-react';
+import { Upload, Camera, RefreshCw, ImageIcon, Play, StopCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import NutritionCard from './NutritionCard';
-import { initModel, classifyImage } from '../../utils/foodRecognition';
+import { analyzeFoodImageWithNutrition } from '../../services/visionService';
 
-interface FoodData {
+interface FoodItem {
   name: string;
-  confidence: number;
+  quantity?: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+interface FoodDetectionResult {
+  foods: FoodItem[];
+  primaryFood: FoodItem;
 }
 
 const FoodDetection = () => {
   const [activeTab, setActiveTab] = useState<'camera' | 'upload'>('camera');
-  const [isModelLoading, setIsModelLoading] = useState(true);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [detectedFood, setDetectedFood] = useState<FoodData | null>(null);
+  const [detectionResult, setDetectionResult] = useState<FoodDetectionResult | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  useEffect(() => {
-    const loadModel = async () => {
-      try {
-        await initModel();
-        setIsModelLoading(false);
-        toast.success('AI model loaded successfully');
-      } catch (error) {
-        console.error('Failed to load model:', error);
-        toast.error('Failed to load AI model. Please refresh the page.');
-      }
-    };
-    
-    loadModel();
-    
-    return () => {
-      stopCamera();
-    };
-  }, []);
-  
-  useEffect(() => {
-    if (activeTab === 'camera' && !isCameraActive && !isModelLoading) {
-      startCamera();
-    } else if (activeTab === 'upload' && isCameraActive) {
-      stopCamera();
-    }
-  }, [activeTab, isCameraActive, isModelLoading]);
   
   const startCamera = async () => {
     try {
@@ -79,40 +60,42 @@ const FoodDetection = () => {
       tracks.forEach(track => track.stop());
       videoRef.current.srcObject = null;
       setIsCameraActive(false);
+      setPreviewImage(null);
+      setDetectionResult(null);
     }
   };
-  
+
   const captureImage = async () => {
     if (!videoRef.current || !canvasRef.current || isCapturing) return;
-    
+
     setIsCapturing(true);
     
     try {
-      const video = videoRef.current;
       const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
+      const context = canvas.getContext('2d', { willReadFrequently: true });
       
-      if (!context) return;
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
+      if (!context) throw new Error('Could not get canvas context');
+
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+
+      // Store the preview image
       const imageDataUrl = canvas.toDataURL('image/jpeg');
       setPreviewImage(imageDataUrl);
+
+      // Classify using new API
+      const result = await analyzeFoodImageWithNutrition(
+        imageDataUrl, 
+        import.meta.env.VITE_AZURE_VISION_API_KEY
+      );
       
-      const result = await classifyImage(canvas);
+      setDetectionResult(result);
+      toast.success(`Detected ${result.foods.length} food item${result.foods.length > 1 ? 's' : ''}`);
       
-      if (result) {
-        setDetectedFood(result);
-        toast.success(`Detected: ${result.name}`);
-      } else {
-        toast.error('Unable to identify food. Please try again.');
-      }
     } catch (error) {
-      console.error('Error capturing image:', error);
-      toast.error('Failed to process image. Please try again.');
+      console.error('Error:', error);
+      toast.error(error instanceof Error ? error.message : 'Detection failed');
     } finally {
       setIsCapturing(false);
     }
@@ -132,48 +115,57 @@ const FoodDetection = () => {
     try {
       const reader = new FileReader();
       reader.onload = async (event) => {
-        if (event.target?.result && typeof event.target.result === 'string') {
-          setPreviewImage(event.target.result);
-          
-          const img = new Image();
-          img.onload = async () => {
-            if (!canvasRef.current) return;
-            
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d');
-            
-            if (!ctx) return;
-            
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-            
-            const result = await classifyImage(canvas);
-            
-            if (result) {
-              setDetectedFood(result);
-              toast.success(`Detected: ${result.name}`);
-            } else {
-              toast.error('Unable to identify food. Please try again.');
-            }
-            
-            setIsCapturing(false);
-          };
-          
-          img.src = event.target.result;
+        // Add type guard to ensure we have a string result
+        if (!event.target?.result || typeof event.target.result !== 'string') {
+          throw new Error('Failed to read image file');
         }
+        
+        const imageDataUrl = event.target.result;
+        setPreviewImage(imageDataUrl);
+        
+        const img = new Image();
+        img.onload = async () => {
+          if (!canvasRef.current) return;
+          
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          
+          if (!ctx) return;
+          
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          
+          try {
+            // Now we're sure imageDataUrl is a string
+            const result = await analyzeFoodImageWithNutrition(
+              imageDataUrl, 
+              import.meta.env.VITE_AZURE_VISION_API_KEY
+            );
+            
+            setDetectionResult(result);
+            toast.success(`Detected ${result.foods.length} food item${result.foods.length > 1 ? 's' : ''}`);
+          } catch (error) {
+            console.error('API Error:', error);
+            toast.error('Failed to analyze image');
+          }
+        };
+        
+        img.src = imageDataUrl;
       };
       
+      // Read as Data URL which will give us a string result
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('Error processing uploaded image:', error);
       toast.error('Failed to process image. Please try again.');
+    } finally {
       setIsCapturing(false);
     }
   };
   
   const resetDetection = () => {
-    setDetectedFood(null);
+    setDetectionResult(null);
     setPreviewImage(null);
     
     if (fileInputRef.current) {
@@ -228,16 +220,7 @@ const FoodDetection = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col">
               <div className="relative rounded-lg overflow-hidden bg-muted/30 aspect-[4/3] flex items-center justify-center border border-border/60">
-                {isModelLoading ? (
-                  <div className="flex flex-col items-center justify-center p-8 text-center">
-                    <div className="flex space-x-2 mb-4">
-                      <div className="h-3 w-3 rounded-full bg-primary loading-dot"></div>
-                      <div className="h-3 w-3 rounded-full bg-primary loading-dot"></div>
-                      <div className="h-3 w-3 rounded-full bg-primary loading-dot"></div>
-                    </div>
-                    <p className="text-muted-foreground">Loading AI model...</p>
-                  </div>
-                ) : activeTab === 'camera' ? (
+                {activeTab === 'camera' ? (
                   <>
                     {previewImage ? (
                       <img 
@@ -290,26 +273,49 @@ const FoodDetection = () => {
               
               <div className="mt-4 flex gap-4">
                 {activeTab === 'camera' ? (
-                  <button
-                    onClick={captureImage}
-                    disabled={isCapturing || !isCameraActive || isModelLoading}
-                    className="flex-1 py-2 px-4 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
-                  >
-                    Capture & Analyze
-                  </button>
+                  <>
+                    {!isCameraActive ? (
+                      <button
+                        onClick={startCamera}
+                        disabled={isCapturing}
+                        className="flex-1 py-2 px-4 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Play className="h-4 w-4" />
+                        Start Camera
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={captureImage}
+                          disabled={isCapturing || !isCameraActive}
+                          className="flex-1 py-2 px-4 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+                        >
+                          Capture & Analyze
+                        </button>
+                        <button
+                          onClick={stopCamera}
+                          disabled={isCapturing}
+                          className="py-2 px-4 rounded-lg border border-border bg-secondary text-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-secondary/80 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <StopCircle className="h-4 w-4" />
+                          Stop Camera
+                        </button>
+                      </>
+                    )}
+                  </>
                 ) : (
                   <>
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleFileUpload}
-                      disabled={isCapturing || isModelLoading}
+                      disabled={isCapturing}
                       className="hidden"
                       ref={fileInputRef}
                     />
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={isCapturing || isModelLoading}
+                      disabled={isCapturing}
                       className="flex-1 py-2 px-4 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
                     >
                       Select Image
@@ -330,8 +336,11 @@ const FoodDetection = () => {
             </div>
             
             <div className="flex flex-col">
-              {detectedFood ? (
-                <NutritionCard foodData={detectedFood} />
+              {detectionResult ? (
+                <NutritionCard 
+                  foodData={detectionResult.foods} 
+                  primaryFood={detectionResult.primaryFood} 
+                />
               ) : (
                 <div className="flex flex-col h-full items-center justify-center p-8 text-center bg-muted/10 rounded-lg border border-border/60">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -340,7 +349,9 @@ const FoodDetection = () => {
                   <h3 className="text-lg font-medium mb-2">No Food Detected Yet</h3>
                   <p className="text-muted-foreground mb-6">
                     {activeTab === 'camera' 
-                      ? 'Take a picture of your food to analyze its nutritional content'
+                      ? isCameraActive 
+                        ? 'Camera is ready. Capture an image to analyze its nutritional content.'
+                        : 'Start the camera to begin food detection'
                       : 'Upload a food image to analyze its nutritional content'}
                   </p>
                 </div>

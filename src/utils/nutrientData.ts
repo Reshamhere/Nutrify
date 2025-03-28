@@ -1,6 +1,7 @@
+import { useState, useRef, useEffect } from 'react';
 
-// This is a simulated nutrition database
-// In a real app, this would come from an API or a comprehensive database
+const EDAMAM_APP_ID = 'f7a5d712';
+const EDAMAM_APP_KEY = '9c456d19e25ec4a370df4f685f055840';
 
 interface NutrientInfo {
   calories: number;
@@ -9,179 +10,124 @@ interface NutrientInfo {
   fat: number;
   fiber: number;
   sugar: number;
-  benefits: string[];
-  dietarySuitability: string[];
 }
-
-const nutritionDatabase: Record<string, NutrientInfo> = {
-  apple: {
-    calories: 52,
-    protein: 0.3,
-    carbs: 13.8,
-    fat: 0.2,
-    fiber: 2.4,
-    sugar: 10.4,
-    benefits: [
-      'Rich in antioxidants',
-      'Supports heart health',
-      'Improves gut bacteria',
-      'May help lower cholesterol'
-    ],
-    dietarySuitability: ['Vegan', 'Vegetarian', 'Gluten-Free', 'Paleo']
-  },
-  banana: {
-    calories: 89,
-    protein: 1.1,
-    carbs: 22.8,
-    fat: 0.3,
-    fiber: 2.6,
-    sugar: 12.2,
-    benefits: [
-      'Good source of potassium',
-      'Supports digestive health',
-      'Rich in vitamin B6',
-      'Provides energy boost'
-    ],
-    dietarySuitability: ['Vegan', 'Vegetarian', 'Gluten-Free']
-  },
-  broccoli: {
-    calories: 34,
-    protein: 2.8,
-    carbs: 6.6,
-    fat: 0.4,
-    fiber: 2.6,
-    sugar: 1.7,
-    benefits: [
-      'Packed with vitamins and minerals',
-      'Contains potent antioxidants',
-      'Rich in fiber',
-      'Supports detoxification'
-    ],
-    dietarySuitability: ['Vegan', 'Vegetarian', 'Gluten-Free', 'Keto', 'Paleo']
-  },
-  carrot: {
-    calories: 41,
-    protein: 0.9,
-    carbs: 9.6,
-    fat: 0.2,
-    fiber: 2.8,
-    sugar: 4.7,
-    benefits: [
-      'Rich in beta-carotene',
-      'Promotes eye health',
-      'Boosts immune system',
-      'Supports skin health'
-    ],
-    dietarySuitability: ['Vegan', 'Vegetarian', 'Gluten-Free', 'Paleo']
-  },
-  salmon: {
-    calories: 208,
-    protein: 20.4,
-    carbs: 0,
-    fat: 13.4,
-    fiber: 0,
-    sugar: 0,
-    benefits: [
-      'Excellent source of omega-3 fatty acids',
-      'High in protein',
-      'Rich in B vitamins',
-      'Good source of potassium and selenium'
-    ],
-    dietarySuitability: ['Gluten-Free', 'Keto', 'Paleo']
-  },
-  chicken: {
-    calories: 165,
-    protein: 31,
-    carbs: 0,
-    fat: 3.6,
-    fiber: 0,
-    sugar: 0,
-    benefits: [
-      'Excellent source of protein',
-      'Rich in vitamins and minerals',
-      'Supports muscle growth',
-      'Low in fat (without skin)'
-    ],
-    dietarySuitability: ['Gluten-Free', 'Keto', 'Paleo']
-  },
-  rice: {
-    calories: 130,
-    protein: 2.7,
-    carbs: 28.2,
-    fat: 0.3,
-    fiber: 0.4,
-    sugar: 0.1,
-    benefits: [
-      'Good source of energy',
-      'Easy to digest',
-      'Naturally gluten-free',
-      'Low in fat'
-    ],
-    dietarySuitability: ['Vegan', 'Vegetarian', 'Gluten-Free']
-  },
-  pasta: {
-    calories: 158,
-    protein: 5.8,
-    carbs: 30.9,
-    fat: 0.9,
-    fiber: 1.8,
-    sugar: 0.6,
-    benefits: [
-      'Good source of complex carbohydrates',
-      'Provides sustained energy',
-      'Contains essential minerals',
-      'Low in sodium and cholesterol'
-    ],
-    dietarySuitability: ['Vegetarian']
-  },
-  avocado: {
-    calories: 160,
-    protein: 2,
-    carbs: 8.5,
-    fat: 14.7,
-    fiber: 6.7,
-    sugar: 0.7,
-    benefits: [
-      'Rich in healthy fats',
-      'High in fiber',
-      'Contains more potassium than bananas',
-      'Loaded with antioxidants'
-    ],
-    dietarySuitability: ['Vegan', 'Vegetarian', 'Gluten-Free', 'Keto', 'Paleo']
-  },
-  eggs: {
-    calories: 155,
-    protein: 12.6,
-    carbs: 0.6,
-    fat: 10.6,
-    fiber: 0,
-    sugar: 0.6,
-    benefits: [
-      'Complete source of protein',
-      'Rich in choline, which supports brain health',
-      'Contains lutein and zeaxanthin for eye health',
-      'Good source of vitamin D'
-    ],
-    dietarySuitability: ['Vegetarian', 'Gluten-Free', 'Keto', 'Paleo']
-  }
-};
 
 // Default nutrient data for unknown foods
 const defaultNutrientData: NutrientInfo = {
-  calories: 100,
-  protein: 2,
-  carbs: 15,
-  fat: 2,
-  fiber: 1,
-  sugar: 5,
-  benefits: [
-    'Nutritional information not available',
-    'Consider researching this food further'
-  ],
-  dietarySuitability: ['Unknown']
+  calories: 0,
+  protein: 0,
+  carbs: 0,
+  fat: 0,
+  fiber: 0,
+  sugar: 0,
 };
 
-export const getNutrientData = (foodName: string): NutrientInfo => {
-  const normalizedFoodName = foodName.toLowerCase().trim();
-  return nutritionDatabase[normalizedFoodName] || defaultNutrientData;
+
+export const getNutrientData = async (foodName: string): Promise<NutrientInfo> => {
+  // Skip API call for unknown or empty foods
+  if (!foodName || foodName.toLowerCase().includes('unknown')) {
+    return defaultNutrientData;
+  }
+
+  try {
+    // Clean the food name - remove anything in parentheses and special characters
+    const cleanFoodName = foodName
+      .replace(/\(.*?\)/g, '') // Remove anything in parentheses
+      .replace(/[^\w\s]/g, '') // Remove special characters
+      .trim();
+
+    if (!cleanFoodName) {
+      return defaultNutrientData;
+    }
+
+    const response = await fetch(
+      `https://api.edamam.com/api/nutrition-data?app_id=${EDAMAM_APP_ID}&app_key=${EDAMAM_APP_KEY}&ingr=${encodeURIComponent(cleanFoodName)}`
+    );
+
+    console.log('Nutrition API response status:', response.status);
+
+    if (!response.ok) {
+      // More specific error messages
+      if (response.status === 401) {
+        throw new Error('Unauthorized - please check your Edamam API credentials');
+      }
+      if (response.status === 404) {
+        return defaultNutrientData;
+      }
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Nutrition API response data:', data);
+
+    // Handle cases where the API returns no meaningful data
+    if (!data || (!data.calories && !data.totalNutrients)) {
+      return defaultNutrientData;
+    }
+
+    return {
+      calories: Math.round(data.calories || 0),
+      protein: Math.round(data.totalNutrients?.PROCNT?.quantity || 0),
+      carbs: Math.round(data.totalNutrients?.CHOCDF?.quantity || 0),
+      fat: Math.round(data.totalNutrients?.FAT?.quantity || 0),
+      fiber: Math.round(data.totalNutrients?.FIBTG?.quantity || 0),
+      sugar: Math.round(data.totalNutrients?.SUGAR?.quantity || 0),
+    };
+  } catch (error) {
+    console.error('Error in getNutrientData:', error);
+    return defaultNutrientData;
+  }
 };
+
+// Hook for nutrition data fetching
+export const useNutritionData = (foodName: string | null) => {
+  const [nutritionData, setNutritionData] = useState<NutrientInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!foodName) return;
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const data = await getNutrientData(foodName);
+        setNutritionData(data);
+      } catch (err) {
+        setError('Failed to fetch nutrition data');
+        setNutritionData(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [foodName]);
+
+  return { nutritionData, isLoading, error };
+};
+
+// Example usage in a component
+// const NutritionCard = ({ foodName }: { foodName: string }) => {
+//   const { nutritionData, isLoading, error } = useNutritionData(foodName);
+
+//   if (isLoading) return <div>Loading nutrition data...</div>;
+//   if (error) return <div>Error: {error}</div>;
+//   if (!nutritionData) return null;
+
+//   return (
+//     <div className="nutrition-card">
+//       <h2>{foodName} Nutrition Information</h2>
+//       <div className="nutrition-details">
+//         <p>Calories: {nutritionData.calories}</p>
+//         <p>Protein: {nutritionData.protein}g</p>
+//         <p>Carbohydrates: {nutritionData.carbs}g</p>
+//         <p>Fat: {nutritionData.fat}g</p>
+//         <p>Fiber: {nutritionData.fiber}g</p>
+//         <p>Sugar: {nutritionData.sugar}g</p>
+//       </div>
+//     </div>
+//   );
+// };
