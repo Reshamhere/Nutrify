@@ -25,10 +25,23 @@ const FoodInventory = () => {
   const [filter, setFilter] = useState<string>('all');
   
   useEffect(() => {
-    // Load inventory from local storage
     const storedInventory = localStorage.getItem('foodInventory');
     if (storedInventory) {
-      setInventory(JSON.parse(storedInventory));
+      try {
+        const parsed = JSON.parse(storedInventory);
+        // Ensure all items have proper nutrients structure
+        const validated = parsed.map((item: any) => ({
+          ...item,
+          nutrients: {
+            ...item.nutrients,
+            dietarySuitability: item.nutrients?.dietarySuitability || [],
+            benefits: item.nutrients?.benefits || []
+          }
+        }));
+        setInventory(validated);
+      } catch (error) {
+        console.error('Error parsing inventory:', error);
+      }
     }
   }, []);
   
@@ -140,7 +153,7 @@ const FoodInventory = () => {
                     <div className="flex items-center mb-1">
                       <h3 className="text-lg font-medium capitalize">{item.name}</h3>
                       <div className="ml-4 flex gap-2">
-                        {item.nutrients.dietarySuitability.slice(0, 2).map((diet, index) => (
+                          {(item.nutrients.dietarySuitability || []).slice(0, 2).map((diet, index) => (
                           <span 
                             key={index} 
                             className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-secondary text-foreground"
@@ -148,9 +161,9 @@ const FoodInventory = () => {
                             {diet}
                           </span>
                         ))}
-                        {item.nutrients.dietarySuitability.length > 2 && (
+                        {(item.nutrients.dietarySuitability || []).length > 2 && (
                           <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                            +{item.nutrients.dietarySuitability.length - 2}
+                            +{(item.nutrients.dietarySuitability || []).length - 2}
                           </span>
                         )}
                       </div>

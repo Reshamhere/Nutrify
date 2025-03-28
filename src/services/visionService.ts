@@ -27,20 +27,26 @@ export async function analyzeFoodImageWithNutrition(
         content: [
           {
             type: "text",
-            text: `You are a food recognition and nutrition analysis AI. 
-                  Identify all food items and estimate their nutrition for typical serving sizes.
-                  Respond with this exact JSON format only:
+            text: `You are a professional nutritionist AI. For each food item:
+                  1. Identify the food name
+                  2. Estimate nutrition for typical serving sizes
+                  3. Include dietary suitability (vegan, vegetarian, gluten-free, etc.)
+                  4. List 2-3 key health benefits
+
+                  Response format (JSON ONLY):
                   {
-                    "foods": [
-                      {
-                        "name": "food name",
-                        "quantity": "estimated serving size",
-                        "calories": number,
-                        "protein": number,
-                        "carbs": number,
-                        "fat": number
-                      }
-                    ]
+                    "foods": [{
+                      "name": "food name",
+                      "quantity": "estimated serving",
+                      "calories": number,
+                      "protein": number,
+                      "carbs": number,
+                      "fat": number,
+                      "fiber": number,
+                      "sugar": number,
+                      "benefits": ["benefit1", "benefit2"],
+                      "dietarySuitability": ["tag1", "tag2"]
+                    }]
                   }`
           },
         ],

@@ -24,10 +24,18 @@ const FoodDetection = () => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [detectionResult, setDetectionResult] = useState<FoodDetectionResult | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [inventoryUpdated, setInventoryUpdated] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inventoryUpdated) {
+      // You could trigger a refresh here if needed
+      setInventoryUpdated(false);
+    }
+  }, [inventoryUpdated]);
   
   const startCamera = async () => {
     try {
@@ -340,6 +348,7 @@ const FoodDetection = () => {
                 <NutritionCard 
                   foodData={detectionResult.foods} 
                   primaryFood={detectionResult.primaryFood} 
+                  onAddToInventory={() => setInventoryUpdated(true)}
                 />
               ) : (
                 <div className="flex flex-col h-full items-center justify-center p-8 text-center bg-muted/10 rounded-lg border border-border/60">
