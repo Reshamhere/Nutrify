@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Camera, Home, Leaf, Menu, X } from 'lucide-react';
+import { Camera, Home, Leaf, Menu, X, ChefHat } from 'lucide-react';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,6 +28,7 @@ const Navbar = () => {
     { name: 'Home', path: '/', icon: <Home className="h-4 w-4" /> },
     { name: 'Detect', path: '/detect', icon: <Camera className="h-4 w-4" /> },
     { name: 'Inventory', path: '/inventory', icon: <Leaf className="h-4 w-4" /> },
+    { name: 'Tools', path: '/tools', icon: <ChefHat className="h-4 w-4" /> },
   ];
 
   const isActive = (path: string) => {

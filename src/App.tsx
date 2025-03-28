@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Detect from "./pages/Detect";
 import Inventory from "./pages/Inventory";
 import NotFound from "./pages/NotFound";
+import { Tools } from "./pages/Tools";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/detect" element={<Detect />} />
           <Route path="/inventory" element={<Inventory />} />
+          <Route path="/tools" element={<Tools />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
