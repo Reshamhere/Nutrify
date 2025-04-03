@@ -109,25 +109,3 @@ export const useNutritionData = (foodName: string | null) => {
   return { nutritionData, isLoading, error };
 };
 
-// Example usage in a component
-// const NutritionCard = ({ foodName }: { foodName: string }) => {
-//   const { nutritionData, isLoading, error } = useNutritionData(foodName);
-
-//   if (isLoading) return <div>Loading nutrition data...</div>;
-//   if (error) return <div>Error: {error}</div>;
-//   if (!nutritionData) return null;
-
-//   return (
-//     <div className="nutrition-card">
-//       <h2>{foodName} Nutrition Information</h2>
-//       <div className="nutrition-details">
-//         <p>Calories: {nutritionData.calories}</p>
-//         <p>Protein: {nutritionData.protein}g</p>
-//         <p>Carbohydrates: {nutritionData.carbs}g</p>
-//         <p>Fat: {nutritionData.fat}g</p>
-//         <p>Fiber: {nutritionData.fiber}g</p>
-//         <p>Sugar: {nutritionData.sugar}g</p>
-//       </div>
-//     </div>
-//   );
-// };

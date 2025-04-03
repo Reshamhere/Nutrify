@@ -27,7 +27,7 @@ export const NutritionChatbot = () => {
 - Recipe suggestions
 
 Give short responses of 2 to 3 sentences and avoid unnecessary details. Do not provide any disclaimers or additional information outside of the nutrition domain.
-For any other topics, respond with: "I'm sorry, I can only answer questions about nutrition and healthy eating.
+For any other topics, respond with: "I'm sorry, I can only answer questions about nutrition and healthy eating".
 
 "`;
   
@@ -41,7 +41,7 @@ For any other topics, respond with: "I'm sorry, I can only answer questions abou
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://zerocarbonocr.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview', {
+      const response = await fetch(import.meta.env.VITE_AZURE_VISION_API_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

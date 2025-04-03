@@ -18,7 +18,7 @@ export async function analyzeFoodImageWithNutrition(
   base64Image: string, 
   apiKey: string
 ): Promise<FoodDetectionResult> {
-  const endpoint = "https://zerocarbonocr.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-15-preview";
+  const endpoint = import.meta.env.VITE_AZURE_VISION_API_ENDPOINT;
 
   const payload = {
     messages: [
