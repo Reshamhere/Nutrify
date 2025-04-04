@@ -3,13 +3,13 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA_MxbKTeix1A9fA8OqoyvsQGlqp3-x-Es",
-  authDomain: "nutrify-22003.firebaseapp.com",
-  projectId: "nutrify-22003",
-  storageBucket: "nutrify-22003.firebasestorage.app",
-  messagingSenderId: "602794074564",
-  appId: "1:602794074564:web:fa36ab51335ee4316c4491",
-  measurementId: "G-EZGYDJE0YZ"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);
